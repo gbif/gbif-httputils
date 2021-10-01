@@ -312,7 +312,8 @@ public class HttpClient {
     return get(url, customRequestConfig, null, credentials);
   }
 
-  public ExtendedResponse get(String url, Map<String, String> headers, UsernamePasswordCredentials credentials)
+  public ExtendedResponse get(
+      String url, Map<String, String> headers, UsernamePasswordCredentials credentials)
       throws IOException, URISyntaxException {
     return get(url, customRequestConfig, headers, credentials);
   }
@@ -448,9 +449,8 @@ public class HttpClient {
   public void setProxy(HttpHost proxy) {
     if (proxy != null) {
       this.proxy = proxy;
-      this.customRequestConfig = RequestConfig.copy(defaultRequestConfig)
-          .setProxy(this.proxy)
-          .build();
+      this.customRequestConfig =
+          RequestConfig.copy(defaultRequestConfig).setProxy(this.proxy).build();
     } else {
       this.proxy = null;
       this.customRequestConfig = null;
