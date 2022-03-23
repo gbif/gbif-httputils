@@ -8,7 +8,7 @@
   </parent>
 
   <artifactId>gbif-httputils</artifactId>
-  <version>1.3</version>
+  <version>1.4-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>GBIF HttpUtils</name>
@@ -19,7 +19,7 @@
     <connection>scm:git:git@github.com:gbif/gbif-httputils.git</connection>
     <url>https://github.com/gbif/gbif-httputils</url>
     <developerConnection>scm:git:git@github.com:gbif/gbif-httputils.git</developerConnection>
-    <tag>gbif-httputils-1.3</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <properties>
