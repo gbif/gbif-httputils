@@ -248,7 +248,7 @@ public class HttpClient {
    * @param strictLastModified if true, downloads the file anyway if Last-Modified is present
    *                           but doesn't match the existing file.
    */
-  private StatusLine downloadIfModifiedSince(
+  public StatusLine downloadIfModifiedSince(
       final URL url, Date lastModified, final File downloadTo, boolean strictLastModified)
       throws IOException {
     if (lastModified == null && downloadTo.exists()) {
