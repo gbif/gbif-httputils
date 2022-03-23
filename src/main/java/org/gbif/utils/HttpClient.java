@@ -188,23 +188,27 @@ public class HttpClient {
   }
 
   /**
-   * Downloads a URL to a file if its modified since the date given.
+   * Downloads a URL to a file if its modified since the date given, or if the timestamp
+   * of the file doesn't match the HTTP Last-Modified header.
+   *
    * Updates the last modified file property to reflect the server's last-modified HTTP header.
    *
    * @param downloadTo file to download to
    * @return true if changed or false if unmodified since lastModified
    */
   public boolean downloadIfChanged(URL url, Date lastModified, File downloadTo) throws IOException {
-    StatusLine status = downloadIfModifiedSince(url, lastModified, downloadTo);
+    StatusLine status = downloadIfModifiedSince(url, lastModified, downloadTo, true);
     return HttpUtil.success(status);
   }
 
   /**
-   * Downloads a URL to a local file using conditional GET, i.e. only downloading the file again if it has been changed
-   * since the last download.
+   * Downloads a URL to a file if its modified since the date given, or if the timestamp
+   * of the file doesn't match the HTTP Last-Modified header.
+   *
+   * Updates the last modified file property to reflect the server's last-modified HTTP header.
    */
   public boolean downloadIfChanged(URL url, File downloadTo) throws IOException {
-    StatusLine status = downloadIfModifiedSince(url, downloadTo);
+    StatusLine status = downloadIfModifiedSince(url, null, downloadTo, true);
     return HttpUtil.success(status);
   }
 
@@ -217,6 +221,39 @@ public class HttpClient {
    */
   public StatusLine downloadIfModifiedSince(
       final URL url, final Date lastModified, final File downloadTo) throws IOException {
+    return downloadIfModifiedSince(url, null, downloadTo, false);
+  }
+
+  /**
+   * Downloads a URL to a local file using conditional GET, i.e. only downloading the file again if it has been changed
+   * on the remote server since the last download.
+   *
+   * @param url        URL to download
+   * @param downloadTo file to download into and used to get the last modified date from
+   */
+  public StatusLine downloadIfModifiedSince(final URL url, final File downloadTo)
+    throws IOException {
+    return downloadIfModifiedSince(url, null, downloadTo, false);
+  }
+
+  /**
+   * Downloads a URL to a local file using conditional GET as for downloadIfModifiedSince.
+   *
+   * In strict mode: if the GET returned 304 with a Last-Modified date which doesn't match
+   * the known date, download the file anyway. This avoids the common case where temporary
+   * error page is never replaced by an older archive.
+   *
+   * @param url URL to download
+   * @param downloadTo file to download into and used to get the last modified date from
+   * @param strictLastModified if true, downloads the file anyway if Last-Modified is present
+   *                           but doesn't match the existing file.
+   */
+  private StatusLine downloadIfModifiedSince(final URL url, Date lastModified, final File downloadTo, boolean strictLastModified)
+    throws IOException {
+    if (lastModified == null && downloadTo.exists()) {
+      lastModified = new Date(downloadTo.lastModified());
+    }
+
     HttpGet get = new HttpGet(url.toString());
 
     if (customRequestConfig != null) {
@@ -235,7 +272,42 @@ public class HttpClient {
     try (CloseableHttpResponse response = client.execute(get)) {
       status = response.getStatusLine();
       if (status.getStatusCode() == HttpStatus.SC_NOT_MODIFIED) {
-        LOG.debug("Content not modified since last request");
+        // If we get 304 Not Modified, check the Last Modified header.
+        String lmHeader = null;
+        if (response.containsHeader(HttpHeaders.LAST_MODIFIED)) {
+          lmHeader = response.getFirstHeader(HttpHeaders.LAST_MODIFIED).getValue();
+        } else {
+          // Try a HEAD request.
+          // (Many servers don't include a Last-Modified header on a 304 response, even though the spec recommends it.
+          // Apache HTTPD prior to 2.4.48 even strips it out! https://bz.apache.org/bugzilla/show_bug.cgi?id=61820)
+          HttpHead head = new HttpHead(url.toString());
+          if (customRequestConfig != null) {
+            head.setConfig(customRequestConfig);
+          }
+          try (CloseableHttpResponse headResponse = client.execute(head)) {
+            final StatusLine headStatus = headResponse.getStatusLine();
+            if (headResponse.containsHeader(HttpHeaders.LAST_MODIFIED)) {
+              lmHeader = headResponse.getFirstHeader(HttpHeaders.LAST_MODIFIED).getValue();
+            }
+          }
+        }
+
+        // Download the file anyway if the Last Modified time doesn't match the Is Modified Since time.
+        if (lmHeader != null) {
+          if (!lastModified.equals(DateUtils.parseDate(lmHeader))) {
+            if (strictLastModified) {
+              LOG.info("Conditional GET/HEAD has Last-Modified {} but existing file has new timestamp {}, downloading anyway.",
+                lmHeader, DateUtils.formatDate(lastModified));
+              return download(url, downloadTo);
+            } else {
+              LOG.warn("Conditional GET/HEAD has Last-Modified {} but existing file has newer timestamp {}. Ignoring!");
+            }
+          } else {
+            LOG.debug("Content's Last-Modified matches timestamp");
+          }
+        } else {
+          LOG.debug("Content not modified since last request");
+        }
       } else if (HttpUtil.success(status)) {
         // write to file only when download succeeds
         saveToFile(response, downloadTo);
@@ -275,22 +347,6 @@ public class HttpClient {
         downloadTo.setLastModified(serverModified.getTime());
       }
     }
-  }
-
-  /**
-   * Downloads a URL to a local file using conditional GET, i.e. only downloading the file again if it has been changed
-   * on the filesystem since the last download.
-   *
-   * @param url URL to download
-   * @param downloadTo file to download into and used to get the last modified date from
-   */
-  public StatusLine downloadIfModifiedSince(final URL url, final File downloadTo)
-      throws IOException {
-    Date lastModified = null;
-    if (downloadTo.exists()) {
-      lastModified = new Date(downloadTo.lastModified());
-    }
-    return downloadIfModifiedSince(url, lastModified, downloadTo);
   }
 
   /**

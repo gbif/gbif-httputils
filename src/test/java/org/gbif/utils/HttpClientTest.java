@@ -20,7 +20,6 @@ import java.util.Date;
 
 import org.apache.http.StatusLine;
 import org.apache.http.client.utils.DateUtils;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -54,7 +53,6 @@ public class HttpClientTest {
 
   /**
    * Tests a condition get against an apache http server within GBIF.
-   * If the file being tested against has been changed in the last 24h this test is expected to fail!
    */
   @Test
   public void testConditionalGet() throws IOException {
@@ -62,34 +60,82 @@ public class HttpClientTest {
     // We know for sure it has changed since this date
     Date last = DateUtils.parseDate("Wed, 03 Aug 2009 22:37:31 GMT");
     File tmp = File.createTempFile("vocab", ".xml");
-    URL url = new URL("http://rs.gbif.org/vocabulary/gbif/rank.xml");
-    assertTrue(httpClient.downloadIfChanged(url, last, tmp));
-
-    // Verify that it does not download with a conditional get of 5 minutes ago, in case of clock
-    // skew.
-    Date nearlyNow = new Date(System.currentTimeMillis() - 1000 * 60 * 5);
-    assertFalse(httpClient.downloadIfChanged(url, nearlyNow, tmp));
+    URL url = new URL("https://rs.gbif.org/vocabulary/gbif/rank.xml");
+    StatusLine status = httpClient.downloadIfModifiedSince(url, last, tmp);
+    assertEquals(304, status.getStatusCode());
   }
 
   /**
-   * Testing if the IPT DWCA file serving respects the is-modified-since.
-   * Ignoring this test as its only a manual one to run to check the IPT!
+   * Testing if the older (≤2.5.7) IPT DWCA file serving respects is-modified-since.
    */
   @Test
-  @Disabled("Manual test")
   public void testIptConditionalGet() throws IOException {
     HttpClient httpClient = HttpUtil.newDefaultMultithreadedClient();
 
     Date beforeChange = DateUtils.parseDate("Wed, 03 Aug 2009 22:37:31 GMT");
-    Date afterChange = DateUtils.parseDate("Wed, 15 May 2019 14:47:25 GMT");
+    Date afterChange = DateUtils.parseDate("Tue, 01 Feb 2022 17:43:12 GMT");
 
     File tmp = File.createTempFile("dwca", ".zip");
-    URL url = new URL("https://cloud.gbif.org/bid/archive.do?r=nzcs_introduced_fauna_suriname");
+    URL url = new URL("http://ipt.iobis.org/obis-deepsea/archive.do?r=ccz_uk1_cnidaria");
     boolean downloaded = httpClient.downloadIfChanged(url, beforeChange, tmp);
     assertTrue(downloaded);
 
     downloaded = httpClient.downloadIfChanged(url, afterChange, tmp);
     assertFalse(downloaded);
+  }
+
+  /**
+   * Testing strict conditional get: downloads the file if the timestamp is different, even if it's older.
+   */
+  @Test
+  public void testStrictConditionalGet() throws IOException {
+    // IPT version 2.5.8 or newer, which supports Last-Modified nicely.
+    // (Although forward proxies like Apache HTTPD may still block it.)
+    testStrictConditionalGet(
+      new URL("http://ipt.gbif-uat.org:8080/ipt/archive.do?r=baa_prueba_ipt&v=1.13"),
+      DateUtils.parseDate("Thu, 22 Dec 2016 08:50:43 GMT"),
+      DateUtils.parseDate("Fri, 10 Mar 2017 12:26:33 GMT")
+    );
+
+    // Apache strips the Last-Modified header from the 304 response here.
+    testStrictConditionalGet(
+      new URL("https://ipt.gbif-uat.org/archive.do?r=baa_prueba_ipt&v=1.13"),
+      DateUtils.parseDate("Thu, 22 Dec 2016 08:50:43 GMT"),
+      DateUtils.parseDate("Fri, 10 Mar 2017 12:26:33 GMT")
+    );
+
+    // Plazi have lots and lots of datasets.
+    testStrictConditionalGet(
+      new URL("http://tb.plazi.org/GgServer/dwca/FF8AFFE74A2BFF95FF8D79079C26D70C.zip"),
+      DateUtils.parseDate("Thu, 22 Dec 2016 08:50:43 GMT"),
+      DateUtils.parseDate("Tue, 01 Feb 2022 17:43:12 GMT")
+    );
+  }
+
+  private void testStrictConditionalGet(URL url, Date beforeChange, Date exactChange) throws IOException {
+    HttpClient httpClient = HttpUtil.newDefaultMultithreadedClient();
+
+    File tmp = File.createTempFile("dwca", ".zip");
+
+    boolean downloaded = httpClient.downloadIfChanged(url, beforeChange, tmp);
+    assertTrue(downloaded);
+
+    // File should have timestamp equal to Last-Modified header
+    assertEquals(exactChange.getTime(), tmp.lastModified());
+
+    // Downloading based on known timestamp returns 304 Not Modified
+    downloaded = httpClient.downloadIfChanged(url, exactChange, tmp);
+    assertFalse(downloaded);
+    // Downloading based on the on-disk lastModified also returns 304 Not Modified
+    assertEquals(exactChange.getTime(), tmp.lastModified());
+    downloaded = httpClient.downloadIfChanged(url, tmp);
+    assertFalse(downloaded);
+
+    // Set file's timestamp to now, simulating an incorrect response (e.g. museum homepage instead of the IPT).
+    tmp.setLastModified(new Date().getTime());
+    downloaded = httpClient.downloadIfChanged(url, tmp);
+    assertTrue(downloaded);
+    assertEquals(exactChange.getTime(), tmp.lastModified());
   }
 
   @Test
