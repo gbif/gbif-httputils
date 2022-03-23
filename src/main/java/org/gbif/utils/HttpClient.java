@@ -232,7 +232,7 @@ public class HttpClient {
    * @param downloadTo file to download into and used to get the last modified date from
    */
   public StatusLine downloadIfModifiedSince(final URL url, final File downloadTo)
-    throws IOException {
+      throws IOException {
     return downloadIfModifiedSince(url, null, downloadTo, false);
   }
 
@@ -248,8 +248,9 @@ public class HttpClient {
    * @param strictLastModified if true, downloads the file anyway if Last-Modified is present
    *                           but doesn't match the existing file.
    */
-  private StatusLine downloadIfModifiedSince(final URL url, Date lastModified, final File downloadTo, boolean strictLastModified)
-    throws IOException {
+  private StatusLine downloadIfModifiedSince(
+      final URL url, Date lastModified, final File downloadTo, boolean strictLastModified)
+      throws IOException {
     if (lastModified == null && downloadTo.exists()) {
       lastModified = new Date(downloadTo.lastModified());
     }
@@ -278,8 +279,10 @@ public class HttpClient {
           lmHeader = response.getFirstHeader(HttpHeaders.LAST_MODIFIED).getValue();
         } else {
           // Try a HEAD request.
-          // (Many servers don't include a Last-Modified header on a 304 response, even though the spec recommends it.
-          // Apache HTTPD prior to 2.4.48 even strips it out! https://bz.apache.org/bugzilla/show_bug.cgi?id=61820)
+          // (Many servers don't include a Last-Modified header on a 304 response, even though the
+          // spec recommends it.
+          // Apache HTTPD prior to 2.4.48 even strips it out!
+          // https://bz.apache.org/bugzilla/show_bug.cgi?id=61820)
           HttpHead head = new HttpHead(url.toString());
           if (customRequestConfig != null) {
             head.setConfig(customRequestConfig);
@@ -292,15 +295,19 @@ public class HttpClient {
           }
         }
 
-        // Download the file anyway if the Last Modified time doesn't match the Is Modified Since time.
+        // Download the file anyway if the Last Modified time doesn't match the Is Modified Since
+        // time.
         if (lmHeader != null) {
           if (!lastModified.equals(DateUtils.parseDate(lmHeader))) {
             if (strictLastModified) {
-              LOG.info("Conditional GET/HEAD has Last-Modified {} but existing file has new timestamp {}, downloading anyway.",
-                lmHeader, DateUtils.formatDate(lastModified));
+              LOG.info(
+                  "Conditional GET/HEAD has Last-Modified {} but existing file has new timestamp {}, downloading anyway.",
+                  lmHeader,
+                  DateUtils.formatDate(lastModified));
               return download(url, downloadTo);
             } else {
-              LOG.warn("Conditional GET/HEAD has Last-Modified {} but existing file has newer timestamp {}. Ignoring!");
+              LOG.warn(
+                  "Conditional GET/HEAD has Last-Modified {} but existing file has newer timestamp {}. Ignoring!");
             }
           } else {
             LOG.debug("Content's Last-Modified matches timestamp");

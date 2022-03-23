@@ -92,27 +92,25 @@ public class HttpClientTest {
     // IPT version 2.5.8 or newer, which supports Last-Modified nicely.
     // (Although forward proxies like Apache HTTPD may still block it.)
     testStrictConditionalGet(
-      new URL("http://ipt.gbif-uat.org:8080/ipt/archive.do?r=baa_prueba_ipt&v=1.13"),
-      DateUtils.parseDate("Thu, 22 Dec 2016 08:50:43 GMT"),
-      DateUtils.parseDate("Fri, 10 Mar 2017 12:26:33 GMT")
-    );
+        new URL("http://ipt.gbif-uat.org:8080/ipt/archive.do?r=baa_prueba_ipt&v=1.13"),
+        DateUtils.parseDate("Thu, 22 Dec 2016 08:50:43 GMT"),
+        DateUtils.parseDate("Fri, 10 Mar 2017 12:26:33 GMT"));
 
     // Apache strips the Last-Modified header from the 304 response here.
     testStrictConditionalGet(
-      new URL("https://ipt.gbif-uat.org/archive.do?r=baa_prueba_ipt&v=1.13"),
-      DateUtils.parseDate("Thu, 22 Dec 2016 08:50:43 GMT"),
-      DateUtils.parseDate("Fri, 10 Mar 2017 12:26:33 GMT")
-    );
+        new URL("https://ipt.gbif-uat.org/archive.do?r=baa_prueba_ipt&v=1.13"),
+        DateUtils.parseDate("Thu, 22 Dec 2016 08:50:43 GMT"),
+        DateUtils.parseDate("Fri, 10 Mar 2017 12:26:33 GMT"));
 
     // Plazi have lots and lots of datasets.
     testStrictConditionalGet(
-      new URL("http://tb.plazi.org/GgServer/dwca/FF8AFFE74A2BFF95FF8D79079C26D70C.zip"),
-      DateUtils.parseDate("Thu, 22 Dec 2016 08:50:43 GMT"),
-      DateUtils.parseDate("Tue, 01 Feb 2022 17:43:12 GMT")
-    );
+        new URL("http://tb.plazi.org/GgServer/dwca/FF8AFFE74A2BFF95FF8D79079C26D70C.zip"),
+        DateUtils.parseDate("Thu, 22 Dec 2016 08:50:43 GMT"),
+        DateUtils.parseDate("Tue, 01 Feb 2022 17:43:12 GMT"));
   }
 
-  private void testStrictConditionalGet(URL url, Date beforeChange, Date exactChange) throws IOException {
+  private void testStrictConditionalGet(URL url, Date beforeChange, Date exactChange)
+      throws IOException {
     HttpClient httpClient = HttpUtil.newDefaultMultithreadedClient();
 
     File tmp = File.createTempFile("dwca", ".zip");
@@ -131,7 +129,8 @@ public class HttpClientTest {
     downloaded = httpClient.downloadIfChanged(url, tmp);
     assertFalse(downloaded);
 
-    // Set file's timestamp to now, simulating an incorrect response (e.g. museum homepage instead of the IPT).
+    // Set file's timestamp to now, simulating an incorrect response (e.g. museum homepage instead
+    // of the IPT).
     tmp.setLastModified(new Date().getTime());
     downloaded = httpClient.downloadIfChanged(url, tmp);
     assertTrue(downloaded);
