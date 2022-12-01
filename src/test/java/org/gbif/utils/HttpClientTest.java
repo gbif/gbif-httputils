@@ -20,6 +20,7 @@ import java.util.Date;
 
 import org.apache.http.StatusLine;
 import org.apache.http.client.utils.DateUtils;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -73,10 +74,11 @@ public class HttpClientTest {
     HttpClient httpClient = HttpUtil.newDefaultMultithreadedClient();
 
     Date beforeChange = DateUtils.parseDate("Wed, 03 Aug 2009 22:37:31 GMT");
-    Date afterChange = DateUtils.parseDate("Tue, 01 Feb 2022 17:43:12 GMT");
+    // Resource has <pubDate>Mon, 15 Sep 2014 18:17:05 +0000</pubDate>
+    Date afterChange = DateUtils.parseDate("Fri, 23 Dec 2016 11:20:18 GMT");
 
     File tmp = File.createTempFile("dwca", ".zip");
-    URL url = new URL("http://ipt.iobis.org/obis-deepsea/archive.do?r=ccz_uk1_cnidaria");
+    URL url = new URL("https://data.canadensys.net/ipt/archive.do?r=acg-araneae");
     boolean downloaded = httpClient.downloadIfChanged(url, beforeChange, tmp);
     assertTrue(downloaded);
 
@@ -86,6 +88,8 @@ public class HttpClientTest {
 
   /**
    * Testing strict conditional get: downloads the file if the timestamp is different, even if it's older.
+   *
+   * Could happen if we have an error page or similar saved.
    */
   @Test
   public void testStrictConditionalGet() throws IOException {
@@ -101,12 +105,17 @@ public class HttpClientTest {
         new URL("https://ipt.gbif-uat.org/archive.do?r=baa_prueba_ipt&v=1.13"),
         DateUtils.parseDate("Thu, 22 Dec 2016 08:50:43 GMT"),
         DateUtils.parseDate("Fri, 10 Mar 2017 12:26:33 GMT"));
+  }
+
+  @Test
+  @Disabled("Plazi's Last-Modified isn't working again, https://github.com/plazi/treatmentBank/issues/32")
+  public void testPlaziStrictConditionalGet() throws IOException {
 
     // Plazi have lots and lots of datasets.
     testStrictConditionalGet(
         new URL("http://tb.plazi.org/GgServer/dwca/FF8AFFE74A2BFF95FF8D79079C26D70C.zip"),
         DateUtils.parseDate("Thu, 22 Dec 2016 08:50:43 GMT"),
-        DateUtils.parseDate("Tue, 01 Feb 2022 17:43:12 GMT"));
+        DateUtils.parseDate("Sat, 09 Jul 2022 05:08:23 GMT"));
   }
 
   private void testStrictConditionalGet(URL url, Date beforeChange, Date exactChange)
