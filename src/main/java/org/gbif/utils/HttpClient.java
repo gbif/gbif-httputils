@@ -274,7 +274,8 @@ public class HttpClient {
       status = response.getStatusLine();
       if (status.getStatusCode() == HttpStatus.SC_NOT_MODIFIED) {
         // If we get 304 Not Modified, check the Last Modified header if present.
-        // Download the file anyway if the Last Modified time doesn't match the Is Modified Since time.
+        // Download the file anyway if the Last Modified time doesn't match the Is Modified Since
+        // time.
         // (Note the header is often absent, even on an Apache HTTPD server. The IPT includes
         // it since 2.5.8.)
         String lmHeader = null;

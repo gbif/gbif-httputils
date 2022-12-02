@@ -108,7 +108,8 @@ public class HttpClientTest {
   }
 
   @Test
-  @Disabled("Plazi's Last-Modified isn't working again, https://github.com/plazi/treatmentBank/issues/32")
+  @Disabled(
+      "Plazi's Last-Modified isn't working again, https://github.com/plazi/treatmentBank/issues/32")
   public void testPlaziStrictConditionalGet() throws IOException {
 
     // Plazi have lots and lots of datasets.
