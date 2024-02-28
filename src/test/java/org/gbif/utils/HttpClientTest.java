@@ -20,7 +20,6 @@ import java.util.Date;
 
 import org.apache.http.StatusLine;
 import org.apache.http.client.utils.DateUtils;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -53,7 +52,7 @@ public class HttpClientTest {
   }
 
   /**
-   * Tests a condition get against an apache http server within GBIF.
+   * Tests a condition get against an apache HTTP server within GBIF.
    */
   @Test
   public void testConditionalGet() throws IOException {
@@ -71,19 +70,10 @@ public class HttpClientTest {
    */
   @Test
   public void testIptConditionalGet() throws IOException {
-    HttpClient httpClient = HttpUtil.newDefaultMultithreadedClient();
-
-    Date beforeChange = DateUtils.parseDate("Wed, 03 Aug 2009 22:37:31 GMT");
-    // Resource has <pubDate>Mon, 15 Sep 2014 18:17:05 +0000</pubDate>
-    Date afterChange = DateUtils.parseDate("Fri, 23 Dec 2016 11:20:18 GMT");
-
-    File tmp = File.createTempFile("dwca", ".zip");
-    URL url = new URL("https://data.canadensys.net/ipt/archive.do?r=acg-araneae");
-    boolean downloaded = httpClient.downloadIfChanged(url, beforeChange, tmp);
-    assertTrue(downloaded);
-
-    downloaded = httpClient.downloadIfChanged(url, afterChange, tmp);
-    assertFalse(downloaded);
+    testStrictConditionalGet(
+      new URL("https://data.canadensys.net/ipt/archive.do?r=acg-araneae"),
+      DateUtils.parseDate("Wed, 03 Aug 2009 22:37:31 GMT"),
+      DateUtils.parseDate("Tue, 12 Dec 2023 05:16:28 PST"));
   }
 
   /**
@@ -96,27 +86,19 @@ public class HttpClientTest {
     // IPT version 2.5.8 or newer, which supports Last-Modified nicely.
     // (Although forward proxies like Apache HTTPD may still block it.)
     testStrictConditionalGet(
-        new URL("http://ipt.gbif-uat.org:8080/ipt/archive.do?r=baa_prueba_ipt&v=1.13"),
+        new URL("https://cloud.gbif.org/africa/archive.do?r=occurenceofbirdsinbudongoforestreserve&v=1.0"),
         DateUtils.parseDate("Thu, 22 Dec 2016 08:50:43 GMT"),
-        DateUtils.parseDate("Fri, 10 Mar 2017 12:26:33 GMT"));
-
-    // Apache strips the Last-Modified header from the 304 response here.
-    testStrictConditionalGet(
-        new URL("https://ipt.gbif-uat.org/archive.do?r=baa_prueba_ipt&v=1.13"),
-        DateUtils.parseDate("Thu, 22 Dec 2016 08:50:43 GMT"),
-        DateUtils.parseDate("Fri, 10 Mar 2017 12:26:33 GMT"));
+        DateUtils.parseDate("Sun, 26 Mar 2023 12:06:09 GMT"));
   }
 
   @Test
-  @Disabled(
-      "Plazi's Last-Modified isn't working again, https://github.com/plazi/treatmentBank/issues/32")
   public void testPlaziStrictConditionalGet() throws IOException {
 
     // Plazi have lots and lots of datasets.
     testStrictConditionalGet(
         new URL("http://tb.plazi.org/GgServer/dwca/FF8AFFE74A2BFF95FF8D79079C26D70C.zip"),
         DateUtils.parseDate("Thu, 22 Dec 2016 08:50:43 GMT"),
-        DateUtils.parseDate("Sat, 09 Jul 2022 05:08:23 GMT"));
+        DateUtils.parseDate("Fri, 27 Oct 2023 07:24:45 GMT"));
   }
 
   private void testStrictConditionalGet(URL url, Date beforeChange, Date exactChange)
@@ -125,6 +107,9 @@ public class HttpClientTest {
 
     File tmp = File.createTempFile("dwca", ".zip");
 
+    // Equivalent curl command, with dwca.zip not existing:
+    // curl -Ssv --remote-time --output dwca.zip --time-cond dwca.zip 'https://data.canadensys.net/ipt/archive.do?r=acg-araneae
+    // Check for HTTP 200.
     boolean downloaded = httpClient.downloadIfChanged(url, beforeChange, tmp);
     assertTrue(downloaded);
 
@@ -132,6 +117,9 @@ public class HttpClientTest {
     assertEquals(exactChange.getTime(), tmp.lastModified());
 
     // Downloading based on known timestamp returns 304 Not Modified
+    // Equivalent curl command, with dwca.zip existing after previous command:
+    // curl -Ssv --remote-time --output dwca.zip --time-cond dwca.zip 'https://data.canadensys.net/ipt/archive.do?r=acg-araneae
+    // Check for HTTP 304.
     downloaded = httpClient.downloadIfChanged(url, exactChange, tmp);
     assertFalse(downloaded);
     // Downloading based on the on-disk lastModified also returns 304 Not Modified
