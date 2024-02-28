@@ -71,9 +71,9 @@ public class HttpClientTest {
   @Test
   public void testIptConditionalGet() throws IOException {
     testStrictConditionalGet(
-      new URL("https://data.canadensys.net/ipt/archive.do?r=acg-araneae"),
-      DateUtils.parseDate("Wed, 03 Aug 2009 22:37:31 GMT"),
-      DateUtils.parseDate("Tue, 12 Dec 2023 05:16:28 PST"));
+        new URL("https://data.canadensys.net/ipt/archive.do?r=acg-araneae"),
+        DateUtils.parseDate("Wed, 03 Aug 2009 22:37:31 GMT"),
+        DateUtils.parseDate("Tue, 12 Dec 2023 05:16:28 PST"));
   }
 
   /**
@@ -86,7 +86,8 @@ public class HttpClientTest {
     // IPT version 2.5.8 or newer, which supports Last-Modified nicely.
     // (Although forward proxies like Apache HTTPD may still block it.)
     testStrictConditionalGet(
-        new URL("https://cloud.gbif.org/africa/archive.do?r=occurenceofbirdsinbudongoforestreserve&v=1.0"),
+        new URL(
+            "https://cloud.gbif.org/africa/archive.do?r=occurenceofbirdsinbudongoforestreserve&v=1.0"),
         DateUtils.parseDate("Thu, 22 Dec 2016 08:50:43 GMT"),
         DateUtils.parseDate("Sun, 26 Mar 2023 12:06:09 GMT"));
   }
@@ -108,7 +109,8 @@ public class HttpClientTest {
     File tmp = File.createTempFile("dwca", ".zip");
 
     // Equivalent curl command, with dwca.zip not existing:
-    // curl -Ssv --remote-time --output dwca.zip --time-cond dwca.zip 'https://data.canadensys.net/ipt/archive.do?r=acg-araneae
+    // curl -Ssv --remote-time --output dwca.zip --time-cond dwca.zip
+    // 'https://data.canadensys.net/ipt/archive.do?r=acg-araneae
     // Check for HTTP 200.
     boolean downloaded = httpClient.downloadIfChanged(url, beforeChange, tmp);
     assertTrue(downloaded);
@@ -118,7 +120,8 @@ public class HttpClientTest {
 
     // Downloading based on known timestamp returns 304 Not Modified
     // Equivalent curl command, with dwca.zip existing after previous command:
-    // curl -Ssv --remote-time --output dwca.zip --time-cond dwca.zip 'https://data.canadensys.net/ipt/archive.do?r=acg-araneae
+    // curl -Ssv --remote-time --output dwca.zip --time-cond dwca.zip
+    // 'https://data.canadensys.net/ipt/archive.do?r=acg-araneae
     // Check for HTTP 304.
     downloaded = httpClient.downloadIfChanged(url, exactChange, tmp);
     assertFalse(downloaded);
